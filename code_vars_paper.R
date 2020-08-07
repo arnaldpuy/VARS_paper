@@ -1,8 +1,8 @@
-## ----setup, include=FALSE-------------------------------------------------------------
+## ----setup, include=FALSE--------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 
 
-## ----preliminary steps, results="hide", message=FALSE, warning=FALSE------------------
+## ----preliminary steps, results="hide", message=FALSE, warning=FALSE-------------------
 
 # PRELIMINARY FUNCTIONS ----------------------------------------------------------
 
@@ -44,36 +44,7 @@ checkpoint("2020-07-26",
            checkpointLocation = getwd())
 
 
-## ----initial_settings, results="hide", message=FALSE, warning=FALSE-------------------
-
-# PRELIMINARY FUNCTIONS -------------------------------------------------------
-
-# Function to read in all required packages in one go:
-loadPackages <- function(x) {
-  for(i in x) {
-    if(!require(i, character.only = TRUE)) {
-      install.packages(i, dependencies = TRUE)
-      library(i, character.only = TRUE)
-    }
-  }
-}
-
-# Load the packages
-loadPackages(c("tidyverse", "data.table", "cowplot"))
-
-# Create custom theme
-theme_AP <- function() {
-  theme_bw() +
-    theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          legend.background = element_rect(fill = "transparent",
-                                           color = NA),
-          legend.key = element_rect(fill = "transparent",
-                                    color = NA))
-}
-
-
-## ----functions, cache=TRUE------------------------------------------------------------
+## ----functions, cache=TRUE-------------------------------------------------------------
 
 # DEFINE FUNCTIONS TO PLOT ----------------------------------------------------
 
@@ -91,7 +62,8 @@ fig2_fun <- list(
 fig3_fun <- list(
   "fun1" = function(x) x,
   "fun2" = function(x) ((-1) ^ as.integer(4 * x) * (0.125 - (x %% 0.25)) + 0.125),
-  "fun3" = function(x) ((-1) ^ as.integer(32 * x) * (0.03125 - 2 * (x %% 0.03125)) + 0.03125) / 2
+  "fun3" = function(x) ((-1) ^ as.integer(32 * x) * 
+                          (0.03125 - 2 * (x %% 0.03125)) + 0.03125) / 2
 )
 
 fig4_fun <- list(
@@ -121,7 +93,7 @@ plot_function <- function(fun, min, max) {
 }
 
 
-## ----design_figure_final, cache=TRUE, dependson="functions", warning=FALSE, dev="tikz", fig.height=4, fig.width=4.5----
+## ----design_figure_final, cache=TRUE, dependson="functions", warning=FALSE, dev="tikz", fig.height=4, fig.width=4.5, fig.cap="Examples of functions in @Razavi2016a. a) Unimodal functions with different structures. b) Multimodal versus unimodal function with identical variance. c) Functions covering different ranges in the response. d) A six-dimensional response surface. See Supplementary Materials for a mathematical description of all functions in all sub-plots."----
 
 # PLOT FUNCTIONS -----------------------------------------------------------------
 
@@ -232,7 +204,7 @@ plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 ## fig4
 
 
-## ----plot_fig_liu, cache=TRUE, fig.width=3, fig.height=4.5, echo=FALSE, eval=FALSE----
+## ----plot_fig_liu, cache=TRUE, fig.width=3, fig.height=4.5, echo=FALSE, eval=FALSE-----
 ## 
 ## # PLOT FIGURE LIU -------------------------------------------------------------
 ## 
@@ -276,7 +248,7 @@ plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 ## plot_grid(fig.5, fig.6, labels = "auto", align = "hv", ncol = 1)
 
 
-## ----liu_tikz, dev="tikz", cache=TRUE, fig.width=5.4, fig.height=2.2------------------
+## ----liu_tikz, dev="tikz", cache=TRUE, fig.width=5.4, fig.height=2.2, fig.cap="The highly skewed function of @Liu2006a. a) Distribution of $x_1$ and $x_2$. b) Comparison of impacts of inputs."----
 
 # PLOT FIGURE LIU -------------------------------------------------------------
 
@@ -320,7 +292,7 @@ fig.6.tikz <- cbind(Y, X1.fixed, X2.fixed) %>%
 plot_grid(fig.5.tikz, fig.6.tikz, labels = "auto", align = "hv", ncol = 2)
 
 
-## ----vars_functions, cache=TRUE-------------------------------------------------------
+## ----vars_functions, cache=TRUE--------------------------------------------------------
 
 # CREATE STAR-VARS MATRICES ------------------------------------------------------
 
@@ -408,7 +380,7 @@ vars_ti <- function(Y, star.centers, params, h, method = "all.step") {
 }
 
 
-## ----other_functions, cache=TRUE------------------------------------------------------
+## ----other_functions, cache=TRUE-------------------------------------------------------
 
 # DEFINE JANSEN TOTAL-ORDER INDEX ------------------------------------------------
 
@@ -461,7 +433,7 @@ random_distributions <- function(X, phi) {
 }
 
 
-## ----sample_matrix, cache=TRUE--------------------------------------------------------
+## ----sample_matrix, cache=TRUE---------------------------------------------------------
 
 # DEFINE SETTINGS -----------------------------------------------------------------
 
@@ -515,7 +487,7 @@ mat <- cbind(mat, Nt.vars, N.jansen, Nt.jansen)
 sapply(c(min, max), function(x) x(mat[, "Nt.vars"]))
 
 
-## ----show_matrix, cache=TRUE, dependson="sample_matrix"-------------------------------
+## ----show_matrix, cache=TRUE, dependson="sample_matrix"--------------------------------
 
 # SHOW SAMPLE MATRIX -------------------------------------------------------------
 
@@ -593,7 +565,7 @@ model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen
 }
 
 
-## ----run_model, cache=TRUE, dependson="define_model"----------------------------------
+## ----run_model, cache=TRUE, dependson="define_model"-----------------------------------
 
 # RUN MODEL -----------------------------------------------------------------------
 
@@ -623,7 +595,7 @@ Y.ti <- foreach(i=1:nrow(mat),
 stopCluster(cl)
 
 
-## ----arrange_output, cache=TRUE, dependson="run_model"--------------------------------
+## ----arrange_output, cache=TRUE, dependson="run_model"---------------------------------
 
 # ARRANGE OUTPUT -----------------------------------------------------------------
 
@@ -647,7 +619,7 @@ full_output <- full_output[, correlation:= ifelse(is.na(correlation) == TRUE, 0,
 A <- full_output[,.SD[1:N], estimator][, ratio:= Nt / k]
 
 
-## ----export_results, cache=TRUE, dependson="arrange_output"---------------------------
+## ----export_results, cache=TRUE, dependson="arrange_output"----------------------------
 
 # EXPORT RESULTS -----------------------------------------------------------------
 
@@ -655,7 +627,7 @@ fwrite(A, "A.csv")
 fwrite(full_output, "full_output.csv")
 
 
-## ----uncertainty, cache=TRUE, dependson="arrange_output"------------------------------
+## ----uncertainty, cache=TRUE, dependson="arrange_output"-------------------------------
 
 # UNCERTAINTY ANALYSIS -----------------------------------------------------------
 
@@ -786,6 +758,32 @@ sides <- plot_grid(a1, a2, ncol = 2, rel_widths = c(1, 1), align = "hv",
 plot_grid(legend, sides, rel_heights = c(0.2, 1), ncol = 1)
 
 
+## ----diff_size, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=1.8, fig.width=6----
+
+# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN ------------------------------
+
+A <- A[, diff:= abs(Nt.jansen - Nt.vars)]
+
+# Plot
+ggplot(A, aes(row, diff)) + 
+  geom_line(size = 0.02) + 
+  labs(x = "Simulation", 
+       y = "$ | N_{t_{vars}} - N_{t_{jansen}} | $") + 
+  theme_AP()
+
+
+## ----diff_size_hist, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=2.5, fig.width=3----
+
+# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN 2 -----------------------------
+
+A %>%
+  ggplot(., aes(diff)) +
+  geom_histogram() +
+  labs(y = "Counts", 
+       x = "$ | N_{t_{vars}} - N_{t_{jansen}} | $") +
+  theme_AP()
+
+
 ## ----scatterplots, cache=TRUE, dependson="arrange_output", fig.height=5.5, fig.width=5, fig.cap="Scatterplots of model output $r$ against the model inputs."----
 
 # SCATTERPLOTS -------------------------------------------------------------------
@@ -807,7 +805,7 @@ A[estimator == "VARS-TO"] %>%
   theme_AP()
 
 
-## ----sobol_indices, cache=TRUE, dependson="arrange_output"----------------------------
+## ----sobol_indices, cache=TRUE, dependson="arrange_output"-----------------------------
 
 # SOBOL' INDICES -------------------------------------------------------------------
 
@@ -848,14 +846,14 @@ indices[sensitivity == "Si" | sensitivity == "Ti"] %>%
   theme(legend.position = "top")
 
 
-## ----sum_si, cache=TRUE, dependson="sobol_indices"------------------------------------
+## ----sum_si, cache=TRUE, dependson="sobol_indices"-------------------------------------
 
 # SUM OF FIRST-ORDER INDICES -------------------------------------------------------
 
 indices[sensitivity == "Si", sum(original)]
 
 
-## ----session_information--------------------------------------------------------------
+## ----session_information---------------------------------------------------------------
 
 # SESSION INFORMATION ---------------------------------------------------------------
 

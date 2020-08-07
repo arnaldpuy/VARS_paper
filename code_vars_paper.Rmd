@@ -11,6 +11,7 @@ header-includes:
   - \usepackage{lmodern}
   - \usepackage[T1]{fontenc}
   - \usepackage{amsfonts}
+  - \usepackage{amsmath}
 output:
   pdf_document:
     fig_caption: yes
@@ -25,7 +26,7 @@ output:
     keep_md: true
 link-citations: yes
 fontsize: 11pt
-bibliography: /Users/arnald/Documents/bibtex/LATEX_density.bib
+bibliography: /Users/arnald/Documents/bibtex/ERC-sensitivity.bib
 
 ---
 
@@ -33,7 +34,19 @@ bibliography: /Users/arnald/Documents/bibtex/LATEX_density.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-\newpage
+# Presentation
+This document presents the code workflow of the paper "Is VARS more intuitive and efficient than Sobol' indices?", by A. Puy, S. Lo Piano, and A. Saltelli, currently under review. The abstract is the following:
+
+\vspace{4mm}
+
+*The Variogram Analysis of Response Surfaces (VARS) has been proposed by Razavi and Gupta in Water Resources Research as a new comprehensive framework in sensitivity analysis. According to the authors, VARS provides a more intuitive notion of sensitivity and it is much more computationally efficient than Sobol' indices. Here we review these arguments and critically compare the performance of VARS-TO, for total-order index, against the total-order Jansen estimator. We argue that, unlike classic variance-based methods, VARS lacks a clear definition of what is an \say{important} factor, and prove that the alleged computational superiority of VARS does not hold when its uncertain space is thoroughly explored. We conclude that while VARS enriches the spectrum of existing methods for sensitivity analysis, especially for a diagnostic use of mathematical models, it complements rather than substitutes classic estimators used in variance-based sensitivity analysis.*
+
+\vspace{4mm}
+
+The results of the paper should be fully reproducible in any personal computer. Questions about the code or the computational design should be addressed to A. Puy (apuy@princeton.edu, arnald.puy@pm.me).
+
+## Preliminary functions
+We start by creating a function to load all required libraries for the analysis in one go. We also set a checkpoint to ensure that our code is fully reproducible for anyone anytime. Finally, we design a short theme function for all the plots that will be produced in the analysis.
 
 ```{r preliminary steps, results="hide", message=FALSE, warning=FALSE}
 
@@ -77,42 +90,13 @@ checkpoint("2020-07-26",
            checkpointLocation = getwd())
 ```
 
-# Figures 
-
 \newpage
 
-```{r initial_settings, results="hide", message=FALSE, warning=FALSE}
+# The issue of efficiency
 
-# PRELIMINARY FUNCTIONS -------------------------------------------------------
+In this section we present the code that produces Figs.1 and 2 of the main manuscript. 
 
-# Function to read in all required packages in one go:
-loadPackages <- function(x) {
-  for(i in x) {
-    if(!require(i, character.only = TRUE)) {
-      install.packages(i, dependencies = TRUE)
-      library(i, character.only = TRUE)
-    }
-  }
-}
-
-# Load the packages
-loadPackages(c("tidyverse", "data.table", "cowplot"))
-
-# Create custom theme
-theme_AP <- function() {
-  theme_bw() +
-    theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          legend.background = element_rect(fill = "transparent",
-                                           color = NA),
-          legend.key = element_rect(fill = "transparent",
-                                    color = NA))
-}
-```
-
-\newpage
-
-# Functions
+## Functions to plot
 
 ```{r functions, cache=TRUE}
 
@@ -132,7 +116,8 @@ fig2_fun <- list(
 fig3_fun <- list(
   "fun1" = function(x) x,
   "fun2" = function(x) ((-1) ^ as.integer(4 * x) * (0.125 - (x %% 0.25)) + 0.125),
-  "fun3" = function(x) ((-1) ^ as.integer(32 * x) * (0.03125 - 2 * (x %% 0.03125)) + 0.03125) / 2
+  "fun3" = function(x) ((-1) ^ as.integer(32 * x) * 
+                          (0.03125 - 2 * (x %% 0.03125)) + 0.03125) / 2
 )
 
 fig4_fun <- list(
@@ -162,9 +147,9 @@ plot_function <- function(fun, min, max) {
 }
 ```
 
-# Plot the figures
+## Plot Figures
 
-```{r design_figure_final, cache=TRUE, dependson="functions", warning=FALSE, dev="tikz", fig.height=4, fig.width=4.5}
+```{r design_figure_final, cache=TRUE, dependson="functions", warning=FALSE, dev="tikz", fig.height=4, fig.width=4.5, fig.cap="Examples of functions in @Razavi2016a. a) Unimodal functions with different structures. b) Multimodal versus unimodal function with identical variance. c) Functions covering different ranges in the response. d) A six-dimensional response surface. See Supplementary Materials for a mathematical description of all functions in all sub-plots."}
 
 # PLOT FUNCTIONS -----------------------------------------------------------------
 
@@ -200,7 +185,6 @@ bottom <- plot_grid(a, b, c, d, ncol = 2, align = "hv", labels = "auto")
 
 plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 ```
-
 
 ```{r design_figure, cache=TRUE, dependson="functions", warning=FALSE, echo=FALSE, eval=FALSE}
 
@@ -321,7 +305,7 @@ plot_grid(fig.5, fig.6, labels = "auto", align = "hv", ncol = 1)
 ```
 
 
-```{r liu_tikz, dev="tikz", cache=TRUE, fig.width=5.4, fig.height=2.2}
+```{r liu_tikz, dev="tikz", cache=TRUE, fig.width=5.4, fig.height=2.2, fig.cap="The highly skewed function of @Liu2006a. a) Distribution of $x_1$ and $x_2$. b) Comparison of impacts of inputs."}
 
 # PLOT FIGURE LIU -------------------------------------------------------------
 
@@ -366,6 +350,16 @@ plot_grid(fig.5.tikz, fig.6.tikz, labels = "auto", align = "hv", ncol = 2)
 ```
 
 \newpage
+
+# The issue of efficiency
+
+This section presents the code to compare the efficiency of VARS and the Jansen estimator [@Jansen1999]. We first start by coding all the functions required to compute VARS:
+
+The function `vars_matrices` creates the STAR-VARS sample matrix that VARS needs in order to compute VARS-TO. In our code, the sample matrix can be created with random numbers or with Sobol' Quasi Random Numbers (the default) [@Sobol1967, @Sobol1976].
+
+The function `vars_ti` allows to compute VARS-TO on the model output obtained from a STAR-VARS matrix. Our code pairs values separated by $h$ (`method=one.step`) or separated by $h$, $2h$, $3h$,... (the default, `method=all.step`).
+
+We also code the Jansen estimator [@Jansen1999] (`jansen_ti`), and a function to compute Savage scores (`savage_scores`) [@Savage1956]. Finally, we code a function that allows to randomly transform the distribution of model inputs to normal, logitnormal or different beta distributions.
 
 ```{r vars_functions, cache=TRUE}
 
@@ -508,7 +502,9 @@ random_distributions <- function(X, phi) {
 }
 ```
 
-# Sample matrix
+# The simulations
+
+## The sample matrix
 
 ```{r sample_matrix, cache=TRUE}
 
@@ -571,7 +567,7 @@ sapply(c(min, max), function(x) x(mat[, "Nt.vars"]))
 head(mat)
 ```
 
-# The model
+## The model
 
 ```{r define_model, cache=TRUE, dependson=c("sample_matrix", "other_functions", "vars_functions")}
 
@@ -644,6 +640,8 @@ model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen
 }
 ```
 
+## Execution of the model
+
 ```{r run_model, cache=TRUE, dependson="define_model"}
 
 # RUN MODEL -----------------------------------------------------------------------
@@ -673,6 +671,8 @@ Y.ti <- foreach(i=1:nrow(mat),
 # Stop parallel cluster
 stopCluster(cl)
 ```
+
+## Arrange the results
 
 ```{r arrange_output, cache=TRUE, dependson="run_model"}
 
@@ -839,6 +839,32 @@ sides <- plot_grid(a1, a2, ncol = 2, rel_widths = c(1, 1), align = "hv",
 plot_grid(legend, sides, rel_heights = c(0.2, 1), ncol = 1)
 ```
 
+```{r diff_size, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=1.8, fig.width=6}
+
+# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN ------------------------------
+
+A <- A[, diff:= abs(Nt.jansen - Nt.vars)]
+
+# Plot
+ggplot(A, aes(row, diff)) + 
+  geom_line(size = 0.02) + 
+  labs(x = "Simulation", 
+       y = "$ | N_{t_{vars}} - N_{t_{jansen}} | $") + 
+  theme_AP()
+```
+
+```{r diff_size_hist, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=2.5, fig.width=3}
+
+# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN 2 -----------------------------
+
+A %>%
+  ggplot(., aes(diff)) +
+  geom_histogram() +
+  labs(y = "Counts", 
+       x = "$ | N_{t_{vars}} - N_{t_{jansen}} | $") +
+  theme_AP()
+```
+
 # Sensitivity analysis
 
 ```{r scatterplots, cache=TRUE, dependson="arrange_output", fig.height=5.5, fig.width=5, fig.cap="Scatterplots of model output $r$ against the model inputs."}
@@ -909,6 +935,8 @@ indices[sensitivity == "Si" | sensitivity == "Ti"] %>%
 
 indices[sensitivity == "Si", sum(original)]
 ```
+
+# References
 
 \newpage 
 
