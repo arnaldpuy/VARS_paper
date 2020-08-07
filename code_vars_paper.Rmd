@@ -359,7 +359,7 @@ The function `vars_matrices` creates the STAR-VARS sample matrix that VARS needs
 
 The function `vars_ti` allows to compute VARS-TO on the model output obtained from a STAR-VARS matrix. Our code pairs values separated by $h$ (`method=one.step`) or separated by $h$, $2h$, $3h$,... (the default, `method=all.step`).
 
-We also code the Jansen estimator [@Jansen1999] (`jansen_ti`), and a function to compute Savage scores (`savage_scores`) [@Savage1956]. Finally, we code a function that allows to randomly transform the distribution of model inputs to normal, logitnormal or different beta distributions.
+We also code the Jansen estimator [@Jansen1999] (`jansen_ti`), and a function to compute Savage scores (`savage_scores`) [@Savage1956]. Finally, we code a function that allows to randomly transform the distribution of model inputs to normal, logitnormal or beta distributions (`random_distributions`). This is done in order to check how VARS-TO and Jansen behave when the underlying model input distributions is uncertain (parameter $\phi$) in the main manuscript.
 
 ```{r vars_functions, cache=TRUE}
 
@@ -502,9 +502,11 @@ random_distributions <- function(X, phi) {
 }
 ```
 
-# The simulations
+# The simulations 
+The following code snippets define the settings of the analysis, and are based on @Puyj.
 
 ## The sample matrix
+In this section we create the sample matrix using Sobol' quasi random numbers [@Sobol1967, @Sobol1976]. We then transform them to their appropriate distributions (see Table 1 in @Puy2020e), and define three columns with the total number of model runs for VARS-TO and the Jansen estimator (which is constrained by the total number of model runs for VARS-TO).
 
 ```{r sample_matrix, cache=TRUE}
 
@@ -568,6 +570,18 @@ head(mat)
 ```
 
 ## The model
+The model runs rowwise: for $v=1,2,...,2^{12}$ rows, it constructs three sample matrices using either random numbers ($\tau_v=1$) or Sobol' quasi-random numbers ($\tau_v=2$):  
+
+\begin{enumerate}
+\item A sample matrix for Jansen (column dimension of $k_v$, row dimension of $N_{t_{v}}= N_v(k_v + 1)$.
+\item A sample matrix for VARS-TO (column dimension of $k_v$, row dimension of $N_{t_{v}}=N_{star_{v}} \left [ k_v (( \frac{1}{\Delta h_v}) - 1) + 1 \right ]$).
+\item A large sample matrix to compute the "true" indices (column dimension of $k_v$, row dimension of $N_{t_{v}}= 2^{12}(k_v + 1)$.
+\end{enumerate}
+
+Then it transforms the model inputs into the probability distributions defined by $\phi_v$. The test function for benchmarking is applied to all three sample matrices simultaneously, with its functional form, degree of active second and third-order effects defined by $\epsilon_v$, $k_2$ and $k_3$ respectively. 
+
+Finally, it computes the VARS-TO indices, the Jansen indices and the "true" indices. The performance of VARS-TO and Jansen is then asssessed by checking how good the computed indices correlate with the true indices ($\delta=1$), with the true ranks ($\delta=2$), and with the most important ranks only ($\delta=3$).
+
 
 ```{r define_model, cache=TRUE, dependson=c("sample_matrix", "other_functions", "vars_functions")}
 
@@ -641,6 +655,7 @@ model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen
 ```
 
 ## Execution of the model
+The model is executed in parallel. In my computer it took approximately 8 hours (see the computer specifications below).
 
 ```{r run_model, cache=TRUE, dependson="define_model"}
 
@@ -673,6 +688,7 @@ stopCluster(cl)
 ```
 
 ## Arrange the results
+We arrange the results as to allow further inspection. We also show the simulations that yielded `Na` or `NaN` (below 0.2\% for both Jansen and VARS-TO), and substitute them for zeroes. We finally export the results to `.csv`.
 
 ```{r arrange_output, cache=TRUE, dependson="run_model"}
 
@@ -707,6 +723,7 @@ fwrite(full_output, "full_output.csv")
 ```
 
 # Uncertainty analysis
+In this section we compute some statistics on the model output and plot the results.
 
 ```{r uncertainty, cache=TRUE, dependson="arrange_output"}
 
@@ -774,7 +791,7 @@ scat <- ggplot(A, aes(Nt, k, color = correlation)) +
 scat
 ```
 
-```{r merge_plots, cache=TRUE, dependson=c("scatter_uncertain", "histograms"), dev="tikz", fig.height=5, fig.width=4.3}
+```{r merge_plots, cache=TRUE, dependson=c("scatter_uncertain", "histograms"), dev="tikz", fig.height=5, fig.width=4.3, fig.cap="Uncertainty analysis conducted on $2^{12}$ simulations. a) Histograms of $r$. The vertical red, dashed line shows the median value. The transparent, blue rectangle frames the 0.25, 0.75 quantiles. b) Scatterplots showing the performance of the estimators as a function of the total number of model runs $N_t$ and the model dimensionality $k$. Each simulation is a dot. The greener (darker) the colour, the better (worse) the performance. The white space between $10^3$ and $10^4$ in the $x$ axis is caused by the uneven distribution selected for $h$ (see Table~1 of the manuscript and the Supplementary Materials)."}
 
 # MERGE PLOTS ---------------------------------------------------------------------
  
@@ -783,7 +800,7 @@ plot_grid(unc, scat, ncol = 1, labels = "auto", align = "hv",
 
 ```
 
-```{r median_ratios, cache=TRUE, dependson=c("arrange_output"), dev="tikz", fig.height=2.5, fig.width=5}
+```{r median_ratios, cache=TRUE, dependson=c("arrange_output"), dev="tikz", fig.height=2.5, fig.width=5, fig.cap="Comparison between the accuracy and efficiency of VARS-TO and @Jansen1999. a) Evolution of the median $r$ value across different dimensions $k$. b) Evolution of the median $r$ value across the different number of runs allocated to each model input ($N_t / k$)."}
 
 # PLOT R MEDIANS AS FUNCTION OF K AND NT/K ---------------------------------------
 
@@ -839,7 +856,7 @@ sides <- plot_grid(a1, a2, ncol = 2, rel_widths = c(1, 1), align = "hv",
 plot_grid(legend, sides, rel_heights = c(0.2, 1), ncol = 1)
 ```
 
-```{r diff_size, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=1.8, fig.width=6}
+```{r diff_size, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=1.8, fig.width=6, fig.cap="Line plot displaying the absolute difference between the total number of model runs allocated to Jansen and the total number of runs allocated to VARS-TO in each simulation."}
 
 # CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN ------------------------------
 
@@ -847,13 +864,13 @@ A <- A[, diff:= abs(Nt.jansen - Nt.vars)]
 
 # Plot
 ggplot(A, aes(row, diff)) + 
-  geom_line(size = 0.02) + 
+  geom_line(size = 0.005) + 
   labs(x = "Simulation", 
        y = "$ | N_{t_{vars}} - N_{t_{jansen}} | $") + 
   theme_AP()
 ```
 
-```{r diff_size_hist, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=2.5, fig.width=3}
+```{r diff_size_hist, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=2.5, fig.width=3, fig.cap="Histogram displaying the absolute difference between the total number of model runs allocated to Jansen and the total number of runs allocated to VARS-TO."}
 
 # CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN 2 -----------------------------
 
@@ -866,6 +883,7 @@ A %>%
 ```
 
 # Sensitivity analysis
+In this last section we check how sensitive is VARS-TO to uncertainty in the benchmark settings and to its own design parameters. We first plot the model inputs against the model output in scatterplots, and compute the Sobol' indices using the @Jansen1999 estimators. 
 
 ```{r scatterplots, cache=TRUE, dependson="arrange_output", fig.height=5.5, fig.width=5, fig.cap="Scatterplots of model output $r$ against the model inputs."}
 
@@ -936,8 +954,6 @@ indices[sensitivity == "Si" | sensitivity == "Ti"] %>%
 indices[sensitivity == "Si", sum(original)]
 ```
 
-# References
-
 \newpage 
 
 # Session information
@@ -957,3 +973,7 @@ cat("Num cores:   "); print(detectCores(logical = FALSE))
 ## Return number of threads
 cat("Num threads: "); print(detectCores(logical = FALSE))
 ````
+
+\newpage
+
+# References
