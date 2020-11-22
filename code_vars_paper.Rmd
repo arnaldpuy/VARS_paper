@@ -16,7 +16,7 @@ output:
   pdf_document:
     fig_caption: yes
     number_sections: yes
-    toc: no
+    toc: yes
     toc_depth: 2
     keep_tex: true
   word_document:
@@ -34,6 +34,7 @@ bibliography: /Users/arnald/Documents/bibtex/ERC-sensitivity.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+\newpage
 # Presentation
 This document presents the code workflow of the paper "Is VARS more intuitive and efficient than Sobol' indices?", by A. Puy, S. Lo Piano, and A. Saltelli, currently under review. The abstract is the following:
 
@@ -50,7 +51,7 @@ We start by creating a function to load all required libraries for the analysis 
 
 ```{r preliminary steps, results="hide", message=FALSE, warning=FALSE}
 
-# PRELIMINARY FUNCTIONS ----------------------------------------------------------
+# PRELIMINARY FUNCTIONS -----------------------------------------------------------
 
 # Function to read in all required packages in one go:
 loadPackages <- function(x) {
@@ -68,7 +69,8 @@ remotes::install_github("arnaldpuy/sensobol")
 # Load the packages
 loadPackages(c("tidyverse", "sensobol", "data.table", "parallel", 
                "foreach", "doParallel", "pcaPP", "scales", 
-               "cowplot", "logitnorm", "benchmarkme", "Rfast"))
+               "cowplot", "logitnorm", "benchmarkme", "Rfast", 
+               "wesanderson", "xlsx", "grid", "gridExtra"))
 
 # Create custom theme
 theme_AP <- function() {
@@ -85,14 +87,14 @@ theme_AP <- function() {
 dir.create(".checkpoint")
 library("checkpoint")
 
-checkpoint("2020-07-26", 
-           R.version ="3.6.3", 
+checkpoint("2020-11-01", 
+           R.version ="4.0.3", 
            checkpointLocation = getwd())
 ```
 
 \newpage
 
-# The issue of efficiency
+# The issue of intuitivity
 
 In this section we present the code that produces Figs.1 and 2 of the main manuscript. 
 
@@ -100,7 +102,7 @@ In this section we present the code that produces Figs.1 and 2 of the main manus
 
 ```{r functions, cache=TRUE}
 
-# DEFINE FUNCTIONS TO PLOT ----------------------------------------------------
+# DEFINE FUNCTIONS TO PLOT -----------------------------------------------------
 
 fig1_fun <- list(
   "fun1" = function(x) x ^ 2,
@@ -262,7 +264,7 @@ fig4
 
 ```{r plot_fig_liu, cache=TRUE, fig.width=3, fig.height=4.5, echo=FALSE, eval=FALSE}
 
-# PLOT FIGURE LIU -------------------------------------------------------------
+# PLOT FIGURE LIU ----------------------------------------------------------------
 
 mat <- randtoolbox::sobol(n = 1000, dim = 2)
 mat[, 1] <- qchisq(mat[, 1], df = 10)
@@ -292,7 +294,7 @@ fig.6 <- cbind(Y, X1.fixed, X2.fixed) %>%
   melt(., measure.vars = c("Y", "X1.fixed", "X2.fixed")) %>%
   ggplot(., aes(value, color = variable)) +
   geom_density() +
-  scale_color_discrete(name = "", labels = c("Original PDF of Y", 
+  scale_color_discrete(name = "", labels = c("Original PDF of y", 
                                              "X1 fixed", 
                                              "X2 fixed")) +
   labs(x = expression(italic(y)), 
@@ -304,10 +306,9 @@ fig.6 <- cbind(Y, X1.fixed, X2.fixed) %>%
 plot_grid(fig.5, fig.6, labels = "auto", align = "hv", ncol = 1)
 ```
 
-
 ```{r liu_tikz, dev="tikz", cache=TRUE, fig.width=5.4, fig.height=2.2, fig.cap="The highly skewed function of @Liu2006a. a) Distribution of $x_1$ and $x_2$. b) Comparison of impacts of inputs."}
 
-# PLOT FIGURE LIU -------------------------------------------------------------
+# PLOT FIGURE LIU ----------------------------------------------------------------
 
 mat <- randtoolbox::sobol(n = 1000, dim = 2)
 mat[, 1] <- qchisq(mat[, 1], df = 10)
@@ -320,8 +321,8 @@ fig.5.tikz <- data.table(mat) %>%
   labs(x = expression(italic(x)), 
        y = "Density") +
   scale_color_discrete(name = "", 
-                       labels = c("$X_1 \\sim \\chi_{10} ^ {2}$",
-                                  "$X_2 \\sim \\chi_{13.978} ^ {2}$")) +
+                       labels = c("$x_1 \\sim \\chi_{10} ^ {2}$",
+                                  "$x_2 \\sim \\chi_{13.978} ^ {2}$")) +
   theme_AP() + 
   theme(legend.text.align = 0, 
         legend.position = c(0.93, 0.8))
@@ -337,9 +338,9 @@ fig.6.tikz <- cbind(Y, X1.fixed, X2.fixed) %>%
   melt(., measure.vars = c("Y", "X1.fixed", "X2.fixed")) %>%
   ggplot(., aes(value, color = variable)) +
   geom_density() +
-  scale_color_discrete(name = "", labels = c("Original PDF of Y", 
-                                             "$X_1$ fixed", 
-                                             "$X_2$ fixed")) +
+  scale_color_discrete(name = "", labels = c("Original PDF of $y$", 
+                                             "$x_1$ fixed", 
+                                             "$x_2$ fixed")) +
   labs(x = expression(italic(y)), 
        y = "") +
   theme_AP() +
@@ -349,6 +350,150 @@ fig.6.tikz <- cbind(Y, X1.fixed, X2.fixed) %>%
 plot_grid(fig.5.tikz, fig.6.tikz, labels = "auto", align = "hv", ncol = 2)
 ```
 
+## Analysis of the literature citing VARS
+
+We also provide the code used to analyze the literature citing VARS.
+
+```{r cite_literature, cache=TRUE}
+
+# ANALYSIS OF THE LITERATURE -----------------------------------------------------
+
+dt.vars <- read.xlsx("VARS_literature_completed.xlsx", 
+                     sheetIndex = 1, 
+                     colIndex = c(1:2, 4:14)) %>%
+  data.table()
+
+vars.measures <- c("IVARS10", "IVARS30", "IVARS50", "VARS_TO")
+vars.measures.plot <- c("IVARS$_{10}$", "IVARS$_{30}$", "IVARS$_{50}$", "VARS-TO")
+
+dt.vars <- setnames(dt.vars, vars.measures, vars.measures.plot)
+
+# Number of VARS measures used in each study
+dt.vars[, n.vars.measures:= rowSums(.SD == TRUE, na.rm = TRUE), .SDcols = vars.measures.plot]
+
+# New column 
+dt.vars <- dt.vars[, Authors.vars:= str_detect(Authors, "Razavi|Gupta")]
+
+# EXTRACTION OF SOME STATISTICS --------------------------------------------------
+
+# Total number of studies citing VARS
+total.N <- dt.vars[, .N]
+
+# Total number of studies using VARS
+total.using.vars <- dt.vars[, sum(Used.vars == TRUE)]
+
+# Total number of studies that use or does not use VARS
+dt.vars[, .(count = .N, proportion = .N / total.N), Used.vars]
+
+# Only when VARS is used
+dt.vars[Used.vars == TRUE, .(count = .N, proportion = .N / total.using.vars), Authors.vars]
+```
+
+```{r plot_lit, cache=TRUE, dependson="cite_literature", dev="tikz", fig.width=5.5, fig.height=4}
+
+# PLOT FIGURES
+
+a <- dt.vars[, .N, Used.vars] %>%
+  .[, variable:= "Used VARS?"] %>%
+  .[, Used.vars:= ifelse(Used.vars == TRUE, "Yes", "No")]
+  
+b <- dt.vars[Used.vars == "TRUE"] %>%
+  melt(., measure.vars = vars.measures.plot) %>%
+  .[!is.na(value), ] %>%
+  .[, .(N = sum(value == TRUE)), variable] %>%
+  setnames(., "variable", "Used.vars") %>%
+  .[, variable:= "Which IVARS measure?"]
+
+plotA <- rbind(a, b) %>%
+  ggplot(., aes(Used.vars, N)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~variable, 
+             space = "free_x", 
+             scales = "free") +
+  theme_AP() +
+  labs(x = "", y = "$N$") +
+  theme(strip.background = element_rect(fill = "white"))
+
+plotB <- dt.vars[Used.vars == "TRUE"] %>%
+  .[, .N, Authors.vars] %>%
+  .[, Authors.vars:= ifelse(Authors.vars == TRUE, "Yes", 
+                         ifelse(Authors.vars == FALSE, "No", Authors.vars))] %>%
+  ggplot(., aes(Authors.vars, N)) +
+  geom_bar(stat = "identity") +
+  theme_AP() +
+  labs(x = "Authors VARS", y = "")
+
+top <- plot_grid(plotA, plotB, labels = "auto", align = "hv", rel_widths = c(1, 0.45))
+
+
+c <- data.frame(V1 = as.numeric(unlist(strsplit(dt.vars$k, split = ",")))) %>%
+  ggplot(., aes(V1)) +
+  geom_histogram() +
+  labs(x = "$k$", y = "Count") +
+  theme_AP()
+
+d <- data.frame(V1 = as.numeric(unlist(strsplit(dt.vars$N.stars, split = ",")))) %>%
+  ggplot(., aes(V1)) +
+  geom_histogram() +
+  labs(x = "N$_{stars}$", y = "") +
+  theme_AP()
+
+e <- data.frame(V1 = as.numeric(unlist(strsplit(dt.vars$h, split = ",")))) %>%
+  ggplot(., aes(V1)) +
+  geom_histogram() +
+  labs(x = "$h$", y = "") +
+  theme_AP()
+
+bottom <- plot_grid(c, d, e, ncol = 3, labels = c("c", "d", "e"))
+plot_grid(top, bottom, ncol = 1)
+```
+
+
+```{r plot_literature, cache=TRUE, dependson="cite_literature", dev="tikz", fig.width=7, fig.height=2.5}
+
+# PLOT FIGURES -------------------------------------------------------------------
+
+# Papers citing VARS through time
+setkey(dt.vars, Authors.vars, Year)
+a <- dt.vars[CJ(Authors.vars, Year, unique = TRUE), .N, by = .EACHI] %>%
+  ggplot(., aes(Year, N, color = Authors.vars, group = Authors.vars)) +
+  geom_line() +
+  geom_point() +
+  scale_color_discrete(name = "Authors VARS") +
+  labs(x = "", y = "") +
+  theme_AP() +
+  theme(legend.position = c(0.33, 0.75)) 
+
+# Papers that apply VARS
+temp <- dt.vars[Used.vars == TRUE]
+setkey(temp, Authors.vars, Used.vars, Year)
+b <- temp[CJ(Authors.vars, Used.vars,  Year, unique = TRUE), .N, by = .EACHI] %>%
+  ggplot(., aes(Year, N, color = Authors.vars, group = Authors.vars)) +
+  geom_line() +
+  geom_point() +
+  scale_color_discrete(name = "Authors VARS") +
+  labs(x = "", y = "") +
+  theme_AP() +
+  theme(legend.position = c(0.33, 0.75)) 
+
+# Proportion of IVARS measures used
+temp <- dt.vars[Used.vars == "TRUE"] %>%
+  melt(., measure.vars = vars.measures.plot) 
+setkey(temp, variable, Year)
+c <- temp[CJ(variable, Year, unique = TRUE), sum(value, na.rm = TRUE), by = .EACHI] %>%
+  ggplot(., aes(Year, V1, color = variable, group = variable)) +
+  geom_line(position=position_jitter(w = 0.02, h = 0.02)) +
+  geom_point() +
+  scale_color_discrete(nam= "") +
+  labs(x = "", y = "") +
+  theme_AP() +
+  theme(legend.position = c(0.33, 0.75)) 
+
+all <- plot_grid(a, b, c, ncol = 3, align = "hv", labels = "auto")
+
+grid.arrange(arrangeGrob(all, bottom = grid::textGrob(label = "Year"), 
+                         left = grid::textGrob(label = "$N$")))
+```
 \newpage
 
 # The issue of efficiency
@@ -393,7 +538,9 @@ vars_matrices <- function(star.centers, params, h, method = "QRN") {
     AB[[i]] <- X[[i]][(2 * nrow(B[[i]]) + 1):nrow(X[[i]]), ]
     out[[i]] <- rbind(unname(center[[i]]), AB[[i]])
   }
-  return(do.call(rbind, out))
+  output <- do.call(rbind, out)
+  output[output == 1] <- 0.999
+  return(output)
 }
 
 # CREATE VARS FUNCTION -----------------------------------------------------------
@@ -500,17 +647,354 @@ random_distributions <- function(X, phi) {
   }
   return(out)
 }
+
 ```
 
-# The simulations 
-The following code snippets define the settings of the analysis, and are based on @Puyj.
+```{r plot_random_distributions, dependson="other_functions", cache=TRUE, dev="tikz", fig.width=4.5, fig.height=2.7, fig.cap="Distributions used in the metafunction."}
 
-## The sample matrix
+# PLOT RANDOM DISTRIBUTIONS ------------------------------------------------------
+
+names_ff <- names(sample_distributions)
+prove <- randtoolbox::sobol(n = 1000, dim = length(names_ff))
+
+out <- data.table(sapply(seq_along(names_ff), function(x) 
+  sample_distributions[[names_ff[x]]](prove[, x])))
+
+b <- data.table::melt(out) %>%
+  ggplot(., aes(value, group = variable, colour = variable)) + 
+  geom_density() + 
+  scale_color_discrete(labels = c("$\\mathcal{U}\\sim(0, 1)$", 
+                                  "$\\mathcal{N}\\sim(0.5, 0.2)$", 
+                                  "$Beta\\sim(8, 2)$", 
+                                  "$Beta\\sim(2, 8)$", 
+                                  "$Beta\\sim(2, 0.5)$", 
+                                  "$Beta\\sim(0.5, 2)$", 
+                                  "$Logitnormal\\sim(0, 3.16)$"), 
+                       name = "Distribution") +
+  labs(x = expression(italic(x)), 
+       y = "Density") +
+  theme_AP() 
+
+b
+```
+
+```{r functions_metafunction, cache=TRUE}
+
+# DEFINE METAFUNCTION -----------------------------------------------------------------
+
+function_list <- list(
+  Linear = function(x) x,
+  Quadratic = function(x) x ^ 2,
+  Cubic = function(x) x ^ 3,
+  Exponential = function(x) exp(1) ^ x / (exp(1) - 1),
+  Periodic = function(x) sin(2 * pi * x) / 2,
+  Discontinuous = function(x) ifelse(x > 0.5, 1, 0),
+  Non.monotonic = function(x) 4 * (x - 0.5) ^ 2,
+  Inverse = function(x) (10 - 1 / 1.1) ^ -1 * (x + 0.1) ^ - 1, 
+  No.effect = function(x) x * 0, 
+  Trigonometric = function(x) cos(x)
+)
+```
+
+```{r plot_functions_metafunction, cache=TRUE, dependson="functions_metafunction", fig.height=2.7, fig.width=5, dev="tikz", fig.cap="Functions used in the metafunction of @Becker2019."}
+
+# PLOT METAFUNCTION --------------------------------------------------------------
+
+a <- ggplot(data.frame(x = runif(100)), aes(x)) +
+  map(1:length(function_list), function(nn) {
+    stat_function(fun = function_list[[nn]], 
+                  geom = "line", 
+                  aes_(color = factor(names(function_list[nn])), 
+                       linetype = factor(names(function_list[nn]))))
+  }) +
+  labs(color= "Function", linetype = "Function", 
+       x = expression(italic(x)), 
+       y = expression(italic(y))) +
+  scale_color_discrete(labels = c("$f(x) = x ^ 3$",
+                                  "$f(x) = 1~\\mbox{if}(x > 0.5), 0~\\mbox{otherwise}$", 
+                                  "$f(x) = e ^ x / (e - 1)$", 
+                                  "$f(x) = (10 - 1 / 1.1) ^ {-1} (x + 0.1) ^ {-1}$", 
+                                  "$f(x) = x$", 
+                                  "$f(x) = 0$", 
+                                  "$f(x) = 4(x - 0.5) ^  2$", 
+                                  "$f(x) = \\sin (2 \\pi x) / 2$", 
+                                  "$f(x) = x ^ 2$", 
+                                  "$f(x) = \\cos(x)$")) +
+  scale_linetype_discrete(labels = c("$f(x) = x ^ 3$",
+                                     "$f(x) = 1~\\mbox{if}(x > 0.5), 0~\\mbox{otherwise}$", 
+                                     "$f(x) = e ^ x / (e - 1)$", 
+                                     "$f(x) = (10 - 1 / 1.1) ^ {-1} (x + 0.1) ^ {-1}$", 
+                                     "$f(x) = x$", 
+                                     "$f(x) = 0$", 
+                                     "$f(x) = 4(x - 0.5) ^  2$", 
+                                     "$f(x) = \\sin (2 \\pi x) / 2$", 
+                                     "$f(x) = x ^ 2$", 
+                                     "$f(x) = \\cos(x)$")) +
+  theme_AP() + 
+  theme(legend.position = "right")
+
+a
+```
+
+## The case of the six-dimensional response surface model
+
+```{r six_dimensional, cache=TRUE}
+
+# DEFINE SIX-DIMENSIONAL MODEL ---------------------------------------------------
+
+six_dimension <- function(X) {
+  X1 <- - sin(pi * X[, 1]) - 0.3 * sin(3.33 * pi * X[, 1])
+  X2 <- -0.76 * sin(pi * (X[, 2] - 0.2)) - 0.315
+  X3 <- -0.12 * sin(1.05 * pi * (X[, 3] - 0.2)) -
+    0.02 * sin(95.24 * pi * X[, 3]) - 0.96
+  X4 <- -0.12 * sin(1.05 * pi * (X[, 4] - 0.2)) - 0.96
+  X5 <- -0.05 * sin(pi * (X[, 5] - 0.2)) - 1.02
+  X6 <- -1.08
+  out <- X1 + X2 + X3 + X4 + X5 + X6
+  return(out)
+}
+
+# DEFINE THE MODEL TO COMPUTE THE PROBABILITY OF FAILURE OF SOBOL' SI ------------
+
+# Define matrices: create function
+sobol_fixing <- function(mat, fixed.point = 0.2) {
+  X <- mat
+  for(j in 1:ncol(mat)) {
+    AB <- mat
+    AB[, -j] <- fixed.point
+    X <- rbind(X, AB)
+  }
+  return(X)
+}
+
+# Function to cut by size
+CutBySize <- function(m, block.size, nb = ceiling(m / block.size)) {
+  int <- m / nb
+  upper <- round(1:nb * int)
+  lower <- c(1, upper[-nb] + 1)
+  size <- c(upper[1], diff(upper))
+  cbind(lower, upper, size)
+}
+
+# Probability of failure function
+PF_function <- function(replicas, N) {
+  params <- paste("X", 1:6, sep = "")
+  mat <- randtoolbox::sobol(n = N * replicas, dim = length(params))
+  # Get replicas
+  indices <- CutBySize(nrow(mat), block.size = N)
+  out <- list()
+  for(i in 1:nrow(indices)) {
+    out[[i]] <- mat[indices[i, "lower"]:indices[i, "upper"], ]
+  }
+  mat.replicas <- lapply(out, sobol_fixing)
+  Y <- lapply(mat.replicas, six_dimension)
+  varY <- lapply(Y, function(x) var(x[1:N]))
+  ind <- lapply(Y, function(x) matrix(x[-c(1:N)], ncol = ncol(mat)))
+  final <- lapply(1:replicas, function(x) 
+    (colmeans(ind[[x]] ^ 2) - colmeans(ind[[x]]) ^ 2) / varY[[x]])
+  true.ranks <- c(2, 1, 3, 4, 5, 6)
+  estimated.ranks <- lapply(final, function(x) rank(-x))
+  vec.output <- unlist(lapply(estimated.ranks, 
+                                  function(x) identical(x, true.ranks)))
+  # Probability of failure
+  PF <- 1 - (sum(vec.output) / length(vec.output))
+  # Number of model runs
+  Nt <- nrow(mat.replicas[[1]])
+  output <- data.table(PF, Nt)
+  return(output)
+}
+
+# RUN THE SIMULATIONS -------------------------------------------------------------
+
+x <- seq(2, 13)
+PF.output <- parallel::mclapply(x, function(y) 
+  PF_function(replicas = 500, N = 2 ^ y), 
+  mc.cores = parallel::detectCores() * 0.75)
+```
+
+```{r plot_six_dimensional, cache=TRUE, dependson="six_dimensional", dev="tikz", fig.height=2.2, fig.width=2.7}
+
+# PLOT THE RESULTS --------------------------------------------------------------
+
+a <- rbindlist(PF.output) %>%
+  ggplot(., aes(Nt, PF)) +
+  geom_line() + 
+  geom_point() + 
+  geom_hline(yintercept = 0.05, lty = 2) +
+  scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  labs(x = "$N_t$", 
+       y = "PF") +
+  theme_AP()
+
+a
+```
+
+### Computation of the MAE
+
+```{r mae_computation, cache=TRUE}
+
+# MAE ON THE SIX-DIMENSIONAL MODEL ---------------------------------------------------------
+
+# MAE FOR THE SI ESTIMATOR -------------------------------
+
+# Compute the analytical variance on a large sample size
+N <- 2 ^ 24
+params <- paste("X", 1:6, sep = "")
+A <- randtoolbox::sobol(n = N, dim = length(params))
+Y <- six_dimension(A)
+VY <- var(Y)
+v_analytical <- c(0.0972, 0.136, 0.00358, 0.00301, 0.000587, 0)
+analytical <- v_analytical / VY
+
+# Set the number of replicas
+replicas <- 50
+
+# Create function to calculate Si according to Equation 18
+# Probability of failure function
+compute_si <- function(replicas, N) {
+  params <- paste("X", 1:6, sep = "")
+  mat <- randtoolbox::sobol(n = N * replicas, dim = length(params))
+  # Get replicas
+  indices <- CutBySize(nrow(mat), block.size = N)
+  out <- list()
+  for(i in 1:nrow(indices)) {
+    out[[i]] <- mat[indices[i, "lower"]:indices[i, "upper"], ]
+  }
+  mat.replicas <- lapply(out, sobol_fixing)
+  Y <- lapply(mat.replicas, six_dimension)
+  varY <- lapply(Y, function(x) var(x[1:N]))
+  ind <- lapply(Y, function(x) matrix(x[-c(1:N)], ncol = ncol(mat)))
+  final <- lapply(1:replicas, function(x) 
+    (colmeans(ind[[x]] ^ 2) - colmeans(ind[[x]]) ^ 2) / varY[[x]])
+  return(final)
+}
+
+# Define the sample sizes and compute
+x <- seq(2, 15)
+si.output <- parallel::mclapply(x, function(y) 
+  compute_si(replicas = replicas, N = 2 ^ y), 
+  mc.cores = parallel::detectCores() * 0.75)
+
+# Rearrange
+out <- lapply(si.output, function(x) lapply(x, function(y) data.table(y))) %>%
+  lapply(., function(x) lapply(x, function(y) cbind(y, analytical))) %>%
+  lapply(., function(x) rbindlist(x, idcol = "Replica"))
+
+names(out) <- 2 ^ x
+
+si_analytical <- rbindlist(out, idcol = "N") %>%
+  .[, .(MAE = mean(abs(analytical - y))), N] %>%
+  .[, N:= as.numeric(N)] %>%
+  .[, C:= N * (length(params) + 1)] %>%
+  .[, estimator:= "Sobol'-based"]
+
+# MAE FOR VARS-TO -------------------------------------
+
+# Define h
+h <- 0.1
+
+# Function to replicate star vars matrices
+vars_matrices2 <- function(mat, params, h, method = "QRN") {
+  out <- center <- sections <- A <- B <- AB <- X <- out <- list()
+  for(i in 1:nrow(mat)) {
+    center[[i]] <- mat[i, ]
+    sections[[i]] <- sapply(center[[i]], function(x) {
+      all <- seq(x %% h, 1, h)
+      non.zeros <- all[all!= 0]
+    })
+    B[[i]] <- sapply(1:ncol(mat), function(x) 
+      sections[[i]][, x][!sections[[i]][, x] %in% center[[i]][x]])
+    A[[i]] <- matrix(center[[i]], nrow = nrow(B[[i]]), 
+                     ncol = length(center[[i]]), byrow = TRUE)
+    X[[i]] <- rbind(A[[i]], B[[i]])
+    for(j in 1:ncol(A[[i]])) {
+      AB[[i]] <- A[[i]]
+      AB[[i]][, j] <- B[[i]][, j]
+      X[[i]] <- rbind(X[[i]], AB[[i]])
+    }
+    AB[[i]] <- X[[i]][(2 * nrow(B[[i]]) + 1):nrow(X[[i]]), ]
+    out[[i]] <- rbind(unname(center[[i]]), AB[[i]])
+  }
+  output <- do.call(rbind, out)
+  output <- replace(output, which(output == 1), 0.999)
+  return(output)
+}
+
+# Function to compute mae
+mae_vars <- function(star.centers, h, params, replicas) {
+  mat <- randtoolbox::sobol(n = star.centers * replicas, dim = length(params))
+  # Get replicas
+  indices <- CutBySize(nrow(mat), block.size = star.centers)
+  out <- list()
+  for(i in 1:nrow(indices)) {
+    out[[i]] <- mat[indices[i, "lower"]:indices[i, "upper"], ]
+  }
+  out <- lapply(out, function(x) vars_matrices2(mat = x,  params = params, h = h))
+  Y <- lapply(out, six_dimension)
+  output <- lapply(Y, function(y) vars_ti(Y = y, star.centers = star.centers, params = params, h = h))
+  return(output)
+}
+
+# Define the sample size and compute
+x <- seq(5, 1000, 100)
+vars.dt <- parallel::mclapply(x, function(y) 
+  mae_vars(star.centers = y, h = h, params = params, replicas = replicas), 
+  mc.cores = parallel::detectCores() * 0.75)
+
+# Rearrange
+out <- lapply(vars.dt, function(x) lapply(x, function(y) data.table(y))) %>%
+  lapply(., function(x) lapply(x, function(y) cbind(y, analytical))) %>%
+  lapply(., function(x) rbindlist(x, idcol = "Replica"))
+
+names(out) <- x
+
+vars_analytical <- rbindlist(out, idcol = "Star.centers") %>%
+  .[, .(MAE = mean(abs(analytical - Ti))), Star.centers] %>%
+  .[, Star.centers:= as.numeric(Star.centers)] %>%
+  .[, C:= Star.centers * (length(params) * ((1 / 0.1) -1) + 1)] %>%
+  .[, estimator:= "VARS-TO"]
+```
+
+```{r plot_mae, cache=TRUE, dependson="mae_computation", dev = "tikz", fig.height=2.5, fig.width=3}
+
+# PLOT MAE OF SOBOL-BASED AND VARS-TO --------------------------------------------
+# Plot
+b <- rbind(si_analytical[, .(C, estimator, MAE)], 
+      vars_analytical[, .(C, estimator, MAE)]) %>%
+  ggplot(., aes(C, MAE, group = estimator, color = estimator)) +
+  geom_point() +
+  geom_line() +
+  scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+  scale_y_log10() +
+  scale_color_discrete(name = "Estimator") +
+  labs(x = "$N_t$", y = "MAE") +
+  theme_AP() + 
+  theme(legend.position = "top")
+b
+```
+
+````{r plot_together, cache=TRUE, dependson=c("plot_mae", "plot_six_dimensional"), dev = "tikz", fig.height = 2.5, fig.width = 5.5}
+
+# MERGE FIGURES ------------------------------------------------------------------
+
+legend <- get_legend(b + theme(legend.position = "top"))
+bottom <- plot_grid(a, b + theme(legend.position = "none"), 
+                    ncol = 2, labels = "auto", align = "hv")
+
+plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.1, 1))
+```
+
+## The case of the HYMOD and MESH models
+In this section we present the workflow of the analysis. The following code snippets are based on @Puyj.
+
+### The sample matrix
 In this section we create the sample matrix using Sobol' quasi random numbers [@Sobol1967, @Sobol1976]. We then transform them to their appropriate distributions (see Table 1 in @Puy2020e), and define three columns with the total number of model runs for VARS-TO and the Jansen estimator (which is constrained by the total number of model runs for VARS-TO).
 
 ```{r sample_matrix, cache=TRUE}
 
-# DEFINE SETTINGS -----------------------------------------------------------------
+# DEFINE SETTINGS ------------------------------------------------------------------
 
 N <- 2 ^ 12 # Sample size of sample matrix
 R <- 500 # Number of bootstrap replicas
@@ -525,7 +1009,7 @@ mat <- sobol_matrices(N = N, params = params, order = order)
 
 # TRANSFORM MATRIX ----------------------------------------------------------------
 
-mat[, 1] <- round(qunif(mat[, 1], 3, 20), 0) # N.stars
+mat[, 1] <- round(qunif(mat[, 1], 3, 50), 0) # N.stars
 mat[, 2] <- round(qunif(mat[, 2], 1, 4), 0) # h
 mat[, 3] <- round(qunif(mat[, 3], 3, 50)) # k
 mat[, 4] <- round(qunif(mat[, 4], 0.5, 1), 1) # k_2
@@ -564,12 +1048,12 @@ sapply(c(min, max), function(x) x(mat[, "Nt.vars"]))
 
 ```{r show_matrix, cache=TRUE, dependson="sample_matrix"}
 
-# SHOW SAMPLE MATRIX -------------------------------------------------------------
+# SHOW SAMPLE MATRIX --------------------------------------------------------------
 
 head(mat)
 ```
 
-## The model
+### The model
 The model runs rowwise: for $v=1,2,...,2^{12}$ rows, it constructs three sample matrices using either random numbers ($\tau_v=1$) or Sobol' quasi-random numbers ($\tau_v=2$):  
 
 \begin{enumerate}
@@ -585,7 +1069,7 @@ Finally, it computes the VARS-TO indices, the Jansen indices and the "true" indi
 
 ```{r define_model, cache=TRUE, dependson=c("sample_matrix", "other_functions", "vars_functions")}
 
-# DEFINE MODEL ---------------------------------------------------------------------
+# DEFINE MODEL ----------------------------------------------------------------------
 
 model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen, N.high) {
   if(tau == 1) {
@@ -599,7 +1083,8 @@ model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen
                                method = method)
   set.seed(epsilon)
   jansen.matrix <- sobol_matrices(matrices = c("A", "AB"), N = N.jansen, 
-                                  params = paste("X", 1:k, sep = ""))
+                                  params = paste("X", 1:k, sep = ""), 
+                                  method = method)
   set.seed(epsilon)
   large.matrix <- sobol_matrices(matrices = c("A", "AB"), N = N.high, 
                                  params = paste("X", 1:k, sep = ""), 
@@ -654,12 +1139,12 @@ model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen
 }
 ```
 
-## Execution of the model
+### Execution of the model
 The model is executed in parallel. In my computer it took approximately 8 hours (see the computer specifications below).
 
 ```{r run_model, cache=TRUE, dependson="define_model"}
 
-# RUN MODEL -----------------------------------------------------------------------
+# RUN MODEL ------------------------------------------------------------------------
 
 # Define parallel computing
 cl <- makeCluster(n_cores)
@@ -687,12 +1172,12 @@ Y.ti <- foreach(i=1:nrow(mat),
 stopCluster(cl)
 ```
 
-## Arrange the results
+### Arrange the results
 We arrange the results as to allow further inspection. We also show the simulations that yielded `Na` or `NaN` (below 0.2\% for both Jansen and VARS-TO), and substitute them for zeroes. We finally export the results to `.csv`.
 
 ```{r arrange_output, cache=TRUE, dependson="run_model"}
 
-# ARRANGE OUTPUT -----------------------------------------------------------------
+# ARRANGE OUTPUT -------------------------------------------------------------------
 
 out_cor <- rbindlist(Y.ti, idcol = "row")
 
@@ -722,12 +1207,12 @@ fwrite(A, "A.csv")
 fwrite(full_output, "full_output.csv")
 ```
 
-# Uncertainty analysis
+### Uncertainty analysis
 In this section we compute some statistics on the model output and plot the results.
 
 ```{r uncertainty, cache=TRUE, dependson="arrange_output"}
 
-# UNCERTAINTY ANALYSIS -----------------------------------------------------------
+# UNCERTAINTY ANALYSIS ----------------------------------------------------------
 
 # Compute median and quantiles
 dt_median <- A[, .(median = median(correlation), 
@@ -741,7 +1226,7 @@ A[, .(median = median(correlation),
 
 ```{r histograms, cache=TRUE, dependson="arrange_output", dev="tikz", fig.height=2.5, fig.width=5, fig.cap="Empirical distribution of $r$ for Jansen and VARS."}
 
-# PLOT UNCERTAINTY ---------------------------------------------------------------
+# PLOT UNCERTAINTY --------------------------------------------------------------
 
 # Histograms
 unc <- ggplot(A, aes(correlation)) +
@@ -764,17 +1249,18 @@ unc <- ggplot(A, aes(correlation)) +
   scale_y_continuous(breaks = pretty_breaks(n = 3)) +
   labs(x = expression(italic(r)), 
        y = "Counts") + 
-  theme_AP() 
+  theme_AP() +
+  theme(strip.background = element_rect(fill = "white"))
 
 unc
 ```
 
 ```{r scatter_uncertain, cache=TRUE, dependson="arrange_output", dev="tikz", fig.height=3.5, fig.width=5.5, fig.cap="Scatterplots of the total number of model runs $N_t$ against the function dimensionality $k$. The greener (darker) the colour, the better (worse) the performance."}
 
-# SCATTERPLOT OF MODEL RESULTS ---------------------------------------------------
+# SCATTERPLOT OF MODEL RESULTS ----------------------------------------------------
 
 scat <- ggplot(A, aes(Nt, k, color = correlation)) + 
-  geom_point(size = 0.4) + 
+  geom_point(size = 0.2) + 
   scale_colour_gradientn(colours = c("black", "purple", "red", "orange", "lightgreen"), 
                          name = expression(italic(r)),                
                          breaks = c(0, 0.5, 1)) +
@@ -786,23 +1272,24 @@ scat <- ggplot(A, aes(Nt, k, color = correlation)) +
   facet_wrap(~estimator,
              ncol = 4) + 
   theme_AP() + 
-  theme(legend.position = "top")
+  theme(legend.position = "top") +
+  theme(strip.background = element_rect(fill = "white"))
 
 scat
 ```
 
 ```{r merge_plots, cache=TRUE, dependson=c("scatter_uncertain", "histograms"), dev="tikz", fig.height=5, fig.width=4.3, fig.cap="Uncertainty analysis conducted on $2^{12}$ simulations. a) Histograms of $r$. The vertical red, dashed line shows the median value. The transparent, blue rectangle frames the 0.25, 0.75 quantiles. b) Scatterplots showing the performance of the estimators as a function of the total number of model runs $N_t$ and the model dimensionality $k$. Each simulation is a dot. The greener (darker) the colour, the better (worse) the performance. The white space between $10^3$ and $10^4$ in the $x$ axis is caused by the uneven distribution selected for $h$ (see Table~1 of the manuscript and the Supplementary Materials)."}
 
-# MERGE PLOTS ---------------------------------------------------------------------
+# MERGE PLOTS ----------------------------------------------------------------------
  
 plot_grid(unc, scat, ncol = 1, labels = "auto", align = "hv", 
           rel_heights = c(0.72, 1))
 
 ```
 
-```{r median_ratios, cache=TRUE, dependson=c("arrange_output"), dev="tikz", fig.height=2.5, fig.width=5, fig.cap="Comparison between the accuracy and efficiency of VARS-TO and @Jansen1999. a) Evolution of the median $r$ value across different dimensions $k$. b) Evolution of the median $r$ value across the different number of runs allocated to each model input ($N_t / k$)."}
+```{r median_ratios, cache=TRUE, dependson=c("arrange_output"), dev="tikz", fig.height=4.2, fig.width=5.1, fig.cap="Comparison between the accuracy and efficiency of VARS-TO and @Jansen1999. a) Evolution of the median $r$ value across different dimensions $k$. b) Evolution of the median $r$ value across the different number of runs allocated to each model input ($N_t / k$)."}
 
-# PLOT R MEDIANS AS FUNCTION OF K AND NT/K ---------------------------------------
+# PLOT R MEDIANS AS FUNCTION OF K AND NT/K ----------------------------------------
 
 vv <- seq(5, 50, 5)
 
@@ -814,7 +1301,8 @@ names(dt) <- vv
 a1 <- rbindlist(dt, idcol = "k") %>%
   .[, k:= as.numeric(k)] %>%
   ggplot(., aes(k, V1, color = estimator)) +
-  scale_color_discrete(name = "Estimator") +
+  scale_color_manual(name = "Estimator", 
+                     values = wes_palette(n = 2, name = "Cavalcanti1")) +
   labs(x = expression(italic(k)), 
        y = expression(median(italic(r)))) +
   geom_line() + 
@@ -833,7 +1321,7 @@ for(i in 1:nrow(indices)) {
   out[[i]] <- A[ratio > indices[i, 1] & ratio < indices[i, 2]]
 }
 
-names(out) <- Rfast::rowmeans(indices)
+names(out) <- Rfast::rowMedians(indices)
 
 # Plot r as a function of Nt/k
 a2 <- lapply(out, function(x) x[, median(correlation, na.rm = TRUE), estimator]) %>%
@@ -843,22 +1331,56 @@ a2 <- lapply(out, function(x) x[, median(correlation, na.rm = TRUE), estimator])
   geom_line() + 
   labs(x = expression(italic(N[t]/k)),
        y = "") +
-  scale_color_discrete(name = "Estimator") +
+  scale_color_manual(name = "Estimator", 
+                     values = wes_palette(n = 2, name = "Cavalcanti1")) +
   scale_x_log10() +
   theme_AP() +
   theme(legend.position = "none")
 
-# Merge both plots
+# Plot median Nt/k for the number of simulations
+a3 <- rbindlist(out, idcol = "samples")[, .N, .(estimator, samples)] %>%
+  .[, samples:= as.numeric(samples)] %>%
+  ggplot(., aes(samples, N, color = estimator, group = estimator)) +
+  geom_line() +
+  scale_y_log10() +
+  scale_color_manual(name = "Estimator", 
+                    values = wes_palette(n = 2, name = "Cavalcanti1")) +
+  labs(x = "median$(N_t / k)$",
+       y = "Nº simulations") +
+  theme_AP() +
+  theme(legend.position = "none") 
+
+
+# Merge all plots
 legend <- get_legend(a1 + theme(legend.position = "top"))
 sides <- plot_grid(a1, a2, ncol = 2, rel_widths = c(1, 1), align = "hv", 
                    labels = "auto")
+top.down <- plot_grid(sides, a3, ncol = 1, labels = c("", "c"), rel_heights = c(1, 0.8))
 
-plot_grid(legend, sides, rel_heights = c(0.2, 1), ncol = 1)
+plot_grid(legend, top.down, rel_heights = c(0.1, 1), ncol = 1, align = "hv")
 ```
 
-```{r diff_size, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=1.8, fig.width=6, fig.cap="Line plot displaying the absolute difference between the total number of model runs allocated to Jansen and the total number of runs allocated to VARS-TO in each simulation."}
+```{r normal_distr, cache=TRUE, dependson="arrange_output", dev="tikz", fig.height=2.5, fig.width=3}
 
-# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN ------------------------------
+# PLOT NUMBER OF RUN  BELOW 0.8 FOR EACH LEVEL OF PHI ----------------------------
+
+A[, sum(correlation < 0.8) / .N, .(estimator, phi)] %>%
+  .[order(phi)] %>%
+  ggplot(., aes(factor(phi), V1, fill = estimator)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge(0.6), 
+           color = "black") +
+  scale_fill_manual(values = wes_palette(n = 2, name = "Cavalcanti1"), 
+                    name = "Estimator") +
+  labs(x = "$\\phi$", 
+       y = "$\\frac{1}{N}\\sum_{v=1}^N(r_v<0.8)$") +
+  theme_AP() + 
+  theme(legend.position = "top")
+```
+
+```{r diff_size, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=1.8, fig.width=5, fig.cap="Line plot displaying the absolute difference between the total number of model runs allocated to Jansen and the total number of runs allocated to VARS-TO in each simulation."}
+
+# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN -------------------------------
 
 A <- A[, diff:= abs(Nt.jansen - Nt.vars)]
 
@@ -872,7 +1394,7 @@ ggplot(A, aes(row, diff)) +
 
 ```{r diff_size_hist, cache=TRUE, dependson = "arrange_output", dev="tikz", fig.height=2.5, fig.width=3, fig.cap="Histogram displaying the absolute difference between the total number of model runs allocated to Jansen and the total number of runs allocated to VARS-TO."}
 
-# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN 2 -----------------------------
+# CHECK HOW MUCH NT DIFFERS BETWEEN VARS AND JANSEN 2 ------------------------------
 
 A %>%
   ggplot(., aes(diff)) +
@@ -882,12 +1404,12 @@ A %>%
   theme_AP()
 ```
 
-# Sensitivity analysis
+### Sensitivity analysis
 In this last section we check how sensitive is VARS-TO to uncertainty in the benchmark settings and to its own design parameters. We first plot the model inputs against the model output in scatterplots, and compute the Sobol' indices using the @Jansen1999 estimators. 
 
 ```{r scatterplots, cache=TRUE, dependson="arrange_output", fig.height=5.5, fig.width=5, fig.cap="Scatterplots of model output $r$ against the model inputs."}
 
-# SCATTERPLOTS -------------------------------------------------------------------
+# SCATTERPLOTS --------------------------------------------------------------------
 
 params_notikz <- c("N[stars]", "h", "k", "k[2]", "k[3]", 
                    "epsilon", "delta", "phi", "tau") 
@@ -897,18 +1419,19 @@ A[estimator == "VARS-TO"] %>%
   setnames(., params, params_notikz) %>%
   melt(., measure.vars = params_notikz) %>%
   ggplot(., aes(value, correlation)) +
-  geom_point(size = 0.5, alpha = 0.1) +
+  geom_point(size = 0.2, alpha = 0.05) +
   facet_wrap(~variable, 
              scales = "free_x", 
              labeller = label_parsed) +
   labs(y = expression(italic(r)), 
        x = "") + 
-  theme_AP()
+  theme_AP() +
+  theme(strip.background = element_rect(fill = "white"))
 ```
 
 ```{r sobol_indices, cache=TRUE, dependson="arrange_output"}
 
-# SOBOL' INDICES -------------------------------------------------------------------
+# SOBOL' INDICES --------------------------------------------------------------------
 
 params_tikz <- c("$N_{stars}$", "$h$", "$k$", "$k_2$", "$k_3$", "$\\epsilon$", 
                  "$\\delta$", "$\\phi$", "$\\tau$")
@@ -926,7 +1449,7 @@ indices <- full_output[, sobol_indices(Y = correlation,
 
 ```{r plot_sobol, cache=TRUE, dependson="sobol_indices", dev="tikz", fig.height=2.5, fig.width=3, fig.cap="Sobol' indices."}
 
-# PLOT SOBOL' INDICES -------------------------------------------------------------
+# PLOT SOBOL' INDICES --------------------------------------------------------------
 
 indices[sensitivity == "Si" | sensitivity == "Ti"] %>%
   .[estimator == "VARS-TO"] %>%
@@ -949,9 +1472,16 @@ indices[sensitivity == "Si" | sensitivity == "Ti"] %>%
 
 ```{r sum_si, cache=TRUE, dependson="sobol_indices"}
 
-# SUM OF FIRST-ORDER INDICES -------------------------------------------------------
+# SUM OF FIRST-ORDER INDICES --------------------------------------------------------
 
 indices[sensitivity == "Si", sum(original)]
+```
+
+```{r export_indices, cache=TRUE, dependson="sobol_indices"}
+
+# EXPORT SOBOL' INDICES ----------------------------------------------------------
+
+fwrite(indices, "indices.csv")
 ```
 
 \newpage 
