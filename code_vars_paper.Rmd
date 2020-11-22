@@ -149,7 +149,7 @@ plot_function <- function(fun, min, max) {
 }
 ```
 
-## Plot Figures
+## Plot figures
 
 ```{r design_figure_final, cache=TRUE, dependson="functions", warning=FALSE, dev="tikz", fig.height=4, fig.width=4.5, fig.cap="Examples of functions in @Razavi2016a. a) Unimodal functions with different structures. b) Multimodal versus unimodal function with identical variance. c) Functions covering different ranges in the response. d) A six-dimensional response surface. See Supplementary Materials for a mathematical description of all functions in all sub-plots."}
 
@@ -1173,7 +1173,7 @@ stopCluster(cl)
 ```
 
 ### Arrange the results
-We arrange the results as to allow further inspection. We also show the simulations that yielded `Na` or `NaN` (below 0.2\% for both Jansen and VARS-TO), and substitute them for zeroes. We finally export the results to `.csv`.
+We arrange the results as to allow further inspection. We also show the simulations that yielded `Na` or `NaN`, and substitute them for zeroes. We finally export the results to `.csv`.
 
 ```{r arrange_output, cache=TRUE, dependson="run_model"}
 

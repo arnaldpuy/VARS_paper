@@ -1,8 +1,8 @@
-## ----setup, include=FALSE--------------------------------------------------------------------------------
+## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
 
 
-## ----preliminary steps, results="hide", message=FALSE, warning=FALSE-------------------------------------
+## ----preliminary steps, results="hide", message=FALSE, warning=FALSE-------------------------------------------------------------
 
 # PRELIMINARY FUNCTIONS -----------------------------------------------------------
 
@@ -45,7 +45,7 @@ checkpoint("2020-11-01",
            checkpointLocation = getwd())
 
 
-## ----functions, cache=TRUE-------------------------------------------------------------------------------
+## ----functions, cache=TRUE-------------------------------------------------------------------------------------------------------
 
 # DEFINE FUNCTIONS TO PLOT -----------------------------------------------------
 
@@ -131,7 +131,7 @@ bottom <- plot_grid(a, b, c, d, ncol = 2, align = "hv", labels = "auto")
 plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 
 
-## ----design_figure, cache=TRUE, dependson="functions", warning=FALSE, echo=FALSE, eval=FALSE-------------
+## ----design_figure, cache=TRUE, dependson="functions", warning=FALSE, echo=FALSE, eval=FALSE-------------------------------------
 ## 
 ## # DESIGN FIGURES --------------------------------------------------------------
 ## 
@@ -151,14 +151,14 @@ plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 ##   theme(legend.text.align = 0)
 
 
-## ----plot_fig1, cache=TRUE, dependson="design_figure", fig.width=4.5, fig.height=4.5, warning=FALSE, echo=FALSE, eval=FALSE----
+## ----plot_fig1, cache=TRUE, dependson="design_figure", fig.width=4.5, fig.height=4.5, warning=FALSE, echo=FALSE, eval=FALSE------
 ## 
 ## # PLOT FIGURE 1 ----------------------------------------------------------------
 ## 
 ## plot_grid(fig1, fig2, ncol = 1, align = "hv", labels = "auto")
 
 
-## ----plot_fig_2, cache=TRUE, fig.width=5.5, fig.height=5, warning=FALSE, dependson="functions", echo=FALSE, eval=FALSE----
+## ----plot_fig_2, cache=TRUE, fig.width=5.5, fig.height=5, warning=FALSE, dependson="functions", echo=FALSE, eval=FALSE-----------
 ## 
 ## 
 ## # PLOT FIGURE 2 ---------------------------------------------------------------
@@ -205,7 +205,7 @@ plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 ## fig4
 
 
-## ----plot_fig_liu, cache=TRUE, fig.width=3, fig.height=4.5, echo=FALSE, eval=FALSE-----------------------
+## ----plot_fig_liu, cache=TRUE, fig.width=3, fig.height=4.5, echo=FALSE, eval=FALSE-----------------------------------------------
 ## 
 ## # PLOT FIGURE LIU ----------------------------------------------------------------
 ## 
@@ -237,7 +237,7 @@ plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.2, 1))
 ##   melt(., measure.vars = c("Y", "X1.fixed", "X2.fixed")) %>%
 ##   ggplot(., aes(value, color = variable)) +
 ##   geom_density() +
-##   scale_color_discrete(name = "", labels = c("Original PDF of Y",
+##   scale_color_discrete(name = "", labels = c("Original PDF of y",
 ##                                              "X1 fixed",
 ##                                              "X2 fixed")) +
 ##   labs(x = expression(italic(y)),
@@ -264,8 +264,8 @@ fig.5.tikz <- data.table(mat) %>%
   labs(x = expression(italic(x)), 
        y = "Density") +
   scale_color_discrete(name = "", 
-                       labels = c("$X_1 \\sim \\chi_{10} ^ {2}$",
-                                  "$X_2 \\sim \\chi_{13.978} ^ {2}$")) +
+                       labels = c("$x_1 \\sim \\chi_{10} ^ {2}$",
+                                  "$x_2 \\sim \\chi_{13.978} ^ {2}$")) +
   theme_AP() + 
   theme(legend.text.align = 0, 
         legend.position = c(0.93, 0.8))
@@ -281,9 +281,9 @@ fig.6.tikz <- cbind(Y, X1.fixed, X2.fixed) %>%
   melt(., measure.vars = c("Y", "X1.fixed", "X2.fixed")) %>%
   ggplot(., aes(value, color = variable)) +
   geom_density() +
-  scale_color_discrete(name = "", labels = c("Original PDF of Y", 
-                                             "$X_1$ fixed", 
-                                             "$X_2$ fixed")) +
+  scale_color_discrete(name = "", labels = c("Original PDF of $y$", 
+                                             "$x_1$ fixed", 
+                                             "$x_2$ fixed")) +
   labs(x = expression(italic(y)), 
        y = "") +
   theme_AP() +
@@ -293,7 +293,7 @@ fig.6.tikz <- cbind(Y, X1.fixed, X2.fixed) %>%
 plot_grid(fig.5.tikz, fig.6.tikz, labels = "auto", align = "hv", ncol = 2)
 
 
-## ----cite_literature, cache=TRUE-------------------------------------------------------------------------
+## ----cite_literature, cache=TRUE-------------------------------------------------------------------------------------------------
 
 # ANALYSIS OF THE LITERATURE -----------------------------------------------------
 
@@ -328,7 +328,7 @@ dt.vars[, .(count = .N, proportion = .N / total.N), Used.vars]
 dt.vars[Used.vars == TRUE, .(count = .N, proportion = .N / total.using.vars), Authors.vars]
 
 
-## ----plot_lit, cache=TRUE, dependson="cite_literature", dev="tikz", fig.width=5.5, fig.height=4----------
+## ----plot_lit, cache=TRUE, dependson="cite_literature", dev="tikz", fig.width=5.5, fig.height=4----------------------------------
 
 # PLOT FIGURES
 
@@ -387,7 +387,7 @@ bottom <- plot_grid(c, d, e, ncol = 3, labels = c("c", "d", "e"))
 plot_grid(top, bottom, ncol = 1)
 
 
-## ----plot_literature, cache=TRUE, dependson="cite_literature", dev="tikz", fig.width=7, fig.height=2.5----
+## ----plot_literature, cache=TRUE, dependson="cite_literature", dev="tikz", fig.width=7, fig.height=2.5---------------------------
 
 # PLOT FIGURES -------------------------------------------------------------------
 
@@ -433,7 +433,7 @@ grid.arrange(arrangeGrob(all, bottom = grid::textGrob(label = "Year"),
                          left = grid::textGrob(label = "$N$")))
 
 
-## ----vars_functions, cache=TRUE--------------------------------------------------------------------------
+## ----vars_functions, cache=TRUE--------------------------------------------------------------------------------------------------
 
 # CREATE STAR-VARS MATRICES ------------------------------------------------------
 
@@ -523,7 +523,7 @@ vars_ti <- function(Y, star.centers, params, h, method = "all.step") {
 }
 
 
-## ----other_functions, cache=TRUE-------------------------------------------------------------------------
+## ----other_functions, cache=TRUE-------------------------------------------------------------------------------------------------
 
 # DEFINE JANSEN TOTAL-ORDER INDEX ------------------------------------------------
 
@@ -605,7 +605,7 @@ b <- data.table::melt(out) %>%
 b
 
 
-## ----functions_metafunction, cache=TRUE------------------------------------------------------------------
+## ----functions_metafunction, cache=TRUE------------------------------------------------------------------------------------------
 
 # DEFINE METAFUNCTION -----------------------------------------------------------------
 
@@ -663,7 +663,7 @@ a <- ggplot(data.frame(x = runif(100)), aes(x)) +
 a
 
 
-## ----six_dimensional, cache=TRUE-------------------------------------------------------------------------
+## ----six_dimensional, cache=TRUE-------------------------------------------------------------------------------------------------
 
 # DEFINE SIX-DIMENSIONAL MODEL ---------------------------------------------------
 
@@ -737,7 +737,7 @@ PF.output <- parallel::mclapply(x, function(y)
   mc.cores = parallel::detectCores() * 0.75)
 
 
-## ----plot_six_dimensional, cache=TRUE, dependson="six_dimensional", dev="tikz", fig.height=2.2, fig.width=2.7----
+## ----plot_six_dimensional, cache=TRUE, dependson="six_dimensional", dev="tikz", fig.height=2.2, fig.width=2.7--------------------
 
 # PLOT THE RESULTS --------------------------------------------------------------
 
@@ -755,7 +755,7 @@ a <- rbindlist(PF.output) %>%
 a
 
 
-## ----mae_computation, cache=TRUE-------------------------------------------------------------------------
+## ----mae_computation, cache=TRUE-------------------------------------------------------------------------------------------------
 
 # MAE ON THE SIX-DIMENSIONAL MODEL ---------------------------------------------------------
 
@@ -879,7 +879,7 @@ vars_analytical <- rbindlist(out, idcol = "Star.centers") %>%
   .[, estimator:= "VARS-TO"]
 
 
-## ----plot_mae, cache=TRUE, dependson="mae_computation", dev = "tikz", fig.height=2.5, fig.width=3--------
+## ----plot_mae, cache=TRUE, dependson="mae_computation", dev = "tikz", fig.height=2.5, fig.width=3--------------------------------
 
 # PLOT MAE OF SOBOL-BASED AND VARS-TO --------------------------------------------
 # Plot
@@ -909,7 +909,7 @@ bottom <- plot_grid(a, b + theme(legend.position = "none"),
 plot_grid(legend, bottom, ncol = 1, rel_heights = c(0.1, 1))
 
 
-## ----sample_matrix, cache=TRUE---------------------------------------------------------------------------
+## ----sample_matrix, cache=TRUE---------------------------------------------------------------------------------------------------
 
 # DEFINE SETTINGS ------------------------------------------------------------------
 
@@ -963,14 +963,14 @@ mat <- cbind(mat, Nt.vars, N.jansen, Nt.jansen)
 sapply(c(min, max), function(x) x(mat[, "Nt.vars"]))
 
 
-## ----show_matrix, cache=TRUE, dependson="sample_matrix"--------------------------------------------------
+## ----show_matrix, cache=TRUE, dependson="sample_matrix"--------------------------------------------------------------------------
 
 # SHOW SAMPLE MATRIX --------------------------------------------------------------
 
 head(mat)
 
 
-## ----define_model, cache=TRUE, dependson=c("sample_matrix", "other_functions", "vars_functions")---------
+## ----define_model, cache=TRUE, dependson=c("sample_matrix", "other_functions", "vars_functions")---------------------------------
 
 # DEFINE MODEL ----------------------------------------------------------------------
 
@@ -1042,7 +1042,7 @@ model_ti <- function(N.stars, h, k, k_2, k_3, epsilon, delta, tau, phi, N.jansen
 }
 
 
-## ----run_model, cache=TRUE, dependson="define_model"-----------------------------------------------------
+## ----run_model, cache=TRUE, dependson="define_model"-----------------------------------------------------------------------------
 
 # RUN MODEL ------------------------------------------------------------------------
 
@@ -1072,7 +1072,7 @@ Y.ti <- foreach(i=1:nrow(mat),
 stopCluster(cl)
 
 
-## ----arrange_output, cache=TRUE, dependson="run_model"---------------------------------------------------
+## ----arrange_output, cache=TRUE, dependson="run_model"---------------------------------------------------------------------------
 
 # ARRANGE OUTPUT -------------------------------------------------------------------
 
@@ -1096,7 +1096,7 @@ full_output <- full_output[, correlation:= ifelse(is.na(correlation) == TRUE, 0,
 A <- full_output[,.SD[1:N], estimator][, ratio:= Nt / k]
 
 
-## ----export_results, cache=TRUE, dependson="arrange_output"----------------------------------------------
+## ----export_results, cache=TRUE, dependson="arrange_output"----------------------------------------------------------------------
 
 # EXPORT RESULTS -----------------------------------------------------------------
 
@@ -1104,7 +1104,7 @@ fwrite(A, "A.csv")
 fwrite(full_output, "full_output.csv")
 
 
-## ----uncertainty, cache=TRUE, dependson="arrange_output"-------------------------------------------------
+## ----uncertainty, cache=TRUE, dependson="arrange_output"-------------------------------------------------------------------------
 
 # UNCERTAINTY ANALYSIS ----------------------------------------------------------
 
@@ -1254,7 +1254,7 @@ top.down <- plot_grid(sides, a3, ncol = 1, labels = c("", "c"), rel_heights = c(
 plot_grid(legend, top.down, rel_heights = c(0.1, 1), ncol = 1, align = "hv")
 
 
-## ----normal_distr, cache=TRUE, dependson="arrange_output", dev="tikz", fig.height=2.5, fig.width=3-------
+## ----normal_distr, cache=TRUE, dependson="arrange_output", dev="tikz", fig.height=2.5, fig.width=3-------------------------------
 
 # PLOT NUMBER OF RUN  BELOW 0.8 FOR EACH LEVEL OF PHI ----------------------------
 
@@ -1320,7 +1320,7 @@ A[estimator == "VARS-TO"] %>%
   theme(strip.background = element_rect(fill = "white"))
 
 
-## ----sobol_indices, cache=TRUE, dependson="arrange_output"-----------------------------------------------
+## ----sobol_indices, cache=TRUE, dependson="arrange_output"-----------------------------------------------------------------------
 
 # SOBOL' INDICES --------------------------------------------------------------------
 
@@ -1338,7 +1338,7 @@ indices <- full_output[, sobol_indices(Y = correlation,
                        estimator]
 
 
-## ----plot_sobol, cache=TRUE, dependson="sobol_indices", dev="tikz", fig.height=2.5, fig.width=3, fig.cap="Sobol' indices."----
+## ----plot_sobol, cache=TRUE, dependson="sobol_indices", dev="tikz", fig.height=2.5, fig.width=3, fig.cap="Sobol' indices."-------
 
 # PLOT SOBOL' INDICES --------------------------------------------------------------
 
@@ -1361,21 +1361,21 @@ indices[sensitivity == "Si" | sensitivity == "Ti"] %>%
   theme(legend.position = "top")
 
 
-## ----sum_si, cache=TRUE, dependson="sobol_indices"-------------------------------------------------------
+## ----sum_si, cache=TRUE, dependson="sobol_indices"-------------------------------------------------------------------------------
 
 # SUM OF FIRST-ORDER INDICES --------------------------------------------------------
 
 indices[sensitivity == "Si", sum(original)]
 
 
-## ----export_indices, cache=TRUE, dependson="sobol_indices"-----------------------------------------------
+## ----export_indices, cache=TRUE, dependson="sobol_indices"-----------------------------------------------------------------------
 
 # EXPORT SOBOL' INDICES ----------------------------------------------------------
 
 fwrite(indices, "indices.csv")
 
 
-## ----session_information---------------------------------------------------------------------------------
+## ----session_information---------------------------------------------------------------------------------------------------------
 
 # SESSION INFORMATION ---------------------------------------------------------------
 
